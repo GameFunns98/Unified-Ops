@@ -1,0 +1,27 @@
+name: Feature request
+description: Navrh nove funkce
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: input
+    id: module
+    attributes:
+      label: Modul
+      placeholder: applications / roster / shifts / tickets / backend
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Co chybi nebo co je spatne
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Navrhovane reseni
+    validations:
+      required: true
