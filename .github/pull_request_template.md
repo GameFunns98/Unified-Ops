@@ -12,8 +12,7 @@
 - [ ] infra
 
 ## Checklist
-- [ ] kod buildi
+- [ ] build prosel
 - [ ] lint prosel
 - [ ] typy sedi
 - [ ] zadne tajne udaje v commitu
-- [ ] dokumentace upravena, pokud bylo potreba

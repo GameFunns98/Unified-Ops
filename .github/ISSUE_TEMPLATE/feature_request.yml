@@ -10,18 +10,9 @@ body:
       placeholder: applications / roster / shifts / tickets / backend
     validations:
       required: true
-
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem
-      description: Co chybi nebo co je spatne
-    validations:
-      required: true
-
   - type: textarea
     id: solution
     attributes:
-      label: Navrhovane reseni
+      label: Reseni
     validations:
       required: true

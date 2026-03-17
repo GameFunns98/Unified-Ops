@@ -2,7 +2,6 @@
 
 Sem pridej:
 - domain model
-- hlavni entity
-- vztahy
+- entity vztahy
 - migration notes
 - index strategy

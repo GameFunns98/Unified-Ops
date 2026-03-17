@@ -6,3 +6,521 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum GuildRole {
+  OWNER
+  ADMIN
+  COMMAND
+  HR
+  SUPERVISOR
+  REVIEWER
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  PROBATION
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum ApplicationTemplateStatus {
+  DRAFT
+  LIVE
+  RESTRICTED
+  ARCHIVED
+}
+
+enum ApplicationScope {
+  PUBLIC
+  INTERNAL
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum LimitType {
+  COOLDOWN_DAYS
+  MAX_ACTIVE_SUBMISSIONS
+  MAX_SUBMISSIONS_PER_PERIOD
+  SINGLE_OPEN_APPEAL
+  CUSTOM
+}
+
+enum ReviewDecision {
+  ACCEPT
+  REJECT
+  REQUEST_CHANGES
+  ESCALATE
+}
+
+enum RosterEntryStatus {
+  ACTIVE
+  PROBATION
+  LEAVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum ShiftStatus {
+  ACTIVE
+  COMPLETED
+  FLAGGED
+  CANCELLED
+}
+
+enum TicketPanelStatus {
+  ACTIVE
+  DISABLED
+  ARCHIVED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+  ARCHIVED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AuditActorType {
+  USER
+  BOT
+  SYSTEM
+}
+
+enum AuditEntityType {
+  GUILD
+  MEMBER
+  APPLICATION_TEMPLATE
+  APPLICATION_SUBMISSION
+  ROSTER_ENTRY
+  SHIFT
+  TICKET_PANEL
+  TICKET
+  DISCORD_SYNC_JOB
+}
+
+model User {
+  id              String                  @id @default(cuid())
+  discordId       String                  @unique
+  username        String
+  globalName      String?
+  avatarUrl       String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  memberships     GuildMember[]
+  submissions     ApplicationSubmission[] @relation("SubmissionApplicant")
+  assignedReviews SubmissionReview[]      @relation("SubmissionReviewer")
+  shifts          Shift[]
+  ticketsCreated  Ticket[]                @relation("TicketCreatedBy")
+  ticketsAssigned Ticket[]                @relation("TicketAssignedTo")
+  auditLogs       AuditLog[]              @relation("AuditActorUser")
+}
+
+model Guild {
+  id                   String                  @id @default(cuid())
+  discordGuildId       String                  @unique
+  name                 String
+  slug                 String                  @unique
+  description          String?
+  primaryColor         String?
+  accentColor          String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  members              GuildMember[]
+  divisions            Division[]
+  ranks                Rank[]
+  workflows            WorkflowDefinition[]
+  applicationTemplates ApplicationTemplate[]
+  applicationSubmissions ApplicationSubmission[]
+  rosterEntries        RosterEntry[]
+  ticketPanels         TicketPanel[]
+  tickets              Ticket[]
+  shifts               Shift[]
+  discordSyncJobs      DiscordSyncJob[]
+  auditLogs            AuditLog[]
+}
+
+model GuildMember {
+  id           String       @id @default(cuid())
+  guildId      String
+  userId       String
+  role         GuildRole    @default(MEMBER)
+  status       MemberStatus @default(ACTIVE)
+  isActive     Boolean      @default(true)
+  nickname     String?
+  callsign     String?
+  badgeNumber  String?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  guild        Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rosterEntry  RosterEntry?
+
+  @@unique([guildId, userId])
+  @@index([guildId, role])
+  @@index([guildId, status])
+}
+
+model Division {
+  id           String        @id @default(cuid())
+  guildId      String
+  name         String
+  slug         String
+  description  String?
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  guild        Guild         @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  ranks        Rank[]
+  rosterEntries RosterEntry[]
+
+  @@unique([guildId, slug])
+}
+
+model Rank {
+  id            String       @id @default(cuid())
+  guildId       String
+  divisionId    String?
+  name          String
+  slug          String
+  level         Int
+  discordRoleId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  guild         Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  division      Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  rosterEntries RosterEntry[]
+
+  @@unique([guildId, slug])
+  @@index([guildId, divisionId])
+}
+
+model WorkflowDefinition {
+  id          String               @id @default(cuid())
+  guildId     String
+  name        String
+  slug        String
+  description String?
+  isDefault   Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  guild       Guild                @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  stages      WorkflowStage[]
+  templates   ApplicationTemplate[]
+
+  @@unique([guildId, slug])
+}
+
+model WorkflowStage {
+  id                   String                  @id @default(cuid())
+  workflowDefinitionId String
+  key                  String
+  label                String
+  sortOrder            Int
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  workflowDefinition   WorkflowDefinition      @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  submissions          ApplicationSubmission[] @relation("SubmissionCurrentStage")
+
+  @@unique([workflowDefinitionId, key])
+  @@unique([workflowDefinitionId, sortOrder])
+}
+
+model ApplicationTemplate {
+  id                   String                    @id @default(cuid())
+  guildId              String
+  workflowDefinitionId String?
+  name                 String
+  slug                 String
+  description          String?
+  status               ApplicationTemplateStatus @default(DRAFT)
+  scope                ApplicationScope          @default(PUBLIC)
+  isPublic             Boolean                   @default(true)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  guild                Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  workflowDefinition   WorkflowDefinition?       @relation(fields: [workflowDefinitionId], references: [id], onDelete: SetNull)
+  fields               ApplicationField[]
+  limits               TemplateLimit[]
+  submissions          ApplicationSubmission[]
+
+  @@unique([guildId, slug])
+  @@index([guildId, status])
+}
+
+model ApplicationField {
+  id           String              @id @default(cuid())
+  templateId   String
+  key          String
+  label        String
+  type         String
+  isRequired   Boolean             @default(false)
+  sortOrder    Int                 @default(0)
+  config       Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  template     ApplicationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers      SubmissionAnswer[]
+
+  @@unique([templateId, key])
+  @@index([templateId, sortOrder])
+}
+
+model TemplateLimit {
+  id          String       @id @default(cuid())
+  templateId  String
+  type        LimitType
+  value       String
+  config      Json?
+  createdAt   DateTime     @default(now())
+
+  template    ApplicationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, type])
+}
+
+model ApplicationSubmission {
+  id                 String                  @id @default(cuid())
+  guildId            String
+  templateId         String
+  applicantId        String
+  currentStageId     String?
+  status             SubmissionStatus        @default(DRAFT)
+  submittedAt        DateTime?
+  acceptedAt         DateTime?
+  rejectedAt         DateTime?
+  score              Float?
+  riskScore          Float?
+  riskSignals        Json?
+  metadata           Json?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  guild              Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  template           ApplicationTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  applicant          User                    @relation("SubmissionApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  currentStage       WorkflowStage?          @relation("SubmissionCurrentStage", fields: [currentStageId], references: [id], onDelete: SetNull)
+  answers            SubmissionAnswer[]
+  reviews            SubmissionReview[]
+  rosterHandoffs     SubmissionRosterHandoff[]
+  auditLogs          AuditLog[]
+
+  @@index([guildId, status])
+  @@index([templateId, status])
+  @@index([applicantId, status])
+  @@index([submittedAt])
+}
+
+model SubmissionAnswer {
+  id            String                @id @default(cuid())
+  submissionId  String
+  fieldId       String
+  valueText     String?
+  valueJson     Json?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  submission    ApplicationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  field         ApplicationField      @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, fieldId])
+}
+
+model SubmissionReview {
+  id            String                @id @default(cuid())
+  submissionId  String
+  reviewerId    String
+  decision      ReviewDecision
+  score         Float?
+  notes         String?
+  createdAt     DateTime              @default(now())
+
+  submission    ApplicationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer      User                  @relation("SubmissionReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
+}
+
+model SubmissionRosterHandoff {
+  id            String                @id @default(cuid())
+  submissionId  String
+  rosterEntryId String?
+  status        String
+  payload       Json?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  submission    ApplicationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rosterEntry   RosterEntry?          @relation(fields: [rosterEntryId], references: [id], onDelete: SetNull)
+
+  @@index([submissionId, status])
+}
+
+model RosterEntry {
+  id             String             @id @default(cuid())
+  guildId        String
+  guildMemberId  String             @unique
+  divisionId     String?
+  rankId         String?
+  callsign       String?
+  badgeNumber    String?
+  shiftPattern   String?
+  departmentLabel String?
+  status         RosterEntryStatus  @default(ACTIVE)
+  joinedAt       DateTime?
+  appointedAt    DateTime?
+  notes          String?
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  guild          Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildMember    GuildMember        @relation(fields: [guildMemberId], references: [id], onDelete: Cascade)
+  division       Division?          @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  rank           Rank?              @relation(fields: [rankId], references: [id], onDelete: SetNull)
+  shifts         Shift[]
+  rosterHandoffs SubmissionRosterHandoff[]
+  discordSyncJobs DiscordSyncJob[]
+
+  @@index([guildId, status])
+  @@index([guildId, divisionId])
+  @@index([guildId, rankId])
+}
+
+model Shift {
+  id              String       @id @default(cuid())
+  guildId         String
+  rosterEntryId   String
+  userId          String
+  status          ShiftStatus  @default(ACTIVE)
+  startedAt       DateTime     @default(now())
+  endedAt         DateTime?
+  durationMinutes Int?
+  flagData        Json?
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  guild           Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  rosterEntry     RosterEntry  @relation(fields: [rosterEntryId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status])
+  @@index([userId, startedAt])
+}
+
+model TicketPanel {
+  id              String            @id @default(cuid())
+  guildId         String
+  name            String
+  slug            String
+  status          TicketPanelStatus @default(ACTIVE)
+  discordChannelId String?
+  embedConfig     Json?
+  welcomeConfig   Json?
+  formConfig      Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  guild           Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  tickets         Ticket[]
+
+  @@unique([guildId, slug])
+  @@index([guildId, status])
+}
+
+model Ticket {
+  id                String         @id @default(cuid())
+  guildId           String
+  panelId           String?
+  createdById       String?
+  assignedToId      String?
+  relatedSubmissionId String?
+  relatedRosterEntryId String?
+  title             String
+  description       String?
+  status            TicketStatus   @default(OPEN)
+  priority          TicketPriority @default(MEDIUM)
+  discordThreadId   String?
+  firstResponseAt   DateTime?
+  resolvedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  guild             Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  panel             TicketPanel?   @relation(fields: [panelId], references: [id], onDelete: SetNull)
+  createdBy         User?          @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedTo        User?          @relation("TicketAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, status])
+}
+
+model DiscordSyncJob {
+  id             String      @id @default(cuid())
+  guildId        String
+  rosterEntryId  String?
+  jobType        String
+  status         String
+  payload        Json?
+  result         Json?
+  attemptedAt    DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  guild          Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  rosterEntry    RosterEntry? @relation(fields: [rosterEntryId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, status])
+}
+
+model AuditLog {
+  id                      String                @id @default(cuid())
+  guildId                 String
+  actorType               AuditActorType
+  actorUserId             String?
+  entityType              AuditEntityType
+  entityId                String
+  action                  String
+  summary                 String?
+  payload                 Json?
+  applicationSubmissionId String?
+  createdAt               DateTime              @default(now())
+
+  guild                   Guild                 @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  actorUser               User?                 @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  applicationSubmission   ApplicationSubmission? @relation(fields: [applicationSubmissionId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, entityType, entityId])
+  @@index([createdAt])
+}
