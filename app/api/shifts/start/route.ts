@@ -11,8 +11,12 @@ const startShiftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
     const body = await parseJson(request, startShiftSchema);
+    if (body.guildId !== ctx.guildId) {
+      return fail("Unauthorized guild context.", 403);
+    }
+
 
     const shift = await startShift({
       guildId: body.guildId,

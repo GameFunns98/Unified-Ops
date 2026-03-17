@@ -5,7 +5,6 @@ import { toPrismaJsonValue } from "@/src/lib/prisma-json";
 import { parseJson } from "@/src/lib/api/validation";
 import { created, fail } from "@/src/lib/api/response";
 import { authErrorResponse, getRequestContext } from "@/src/lib/api/auth";
-import { hasMinimumRole } from "@/src/lib/api/permissions";
 
 const createTicketPanelSchema = z.object({
   guildId: z.string().min(1),
@@ -19,13 +18,17 @@ const createTicketPanelSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
 
-    if (!hasMinimumRole(ctx.role, "ADMIN")) {
+    if (!ctx.can("ADMIN")) {
       return fail("Insufficient permissions.", 403);
     }
 
     const body = await parseJson(request, createTicketPanelSchema);
+    if (body.guildId !== ctx.guildId) {
+      return fail("Unauthorized guild context.", 403);
+    }
+
 
     const panel = await prisma.ticketPanel.create({
       data: {

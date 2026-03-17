@@ -21,8 +21,12 @@ type Params = {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
     const body = await parseJson(request, submitApplicationSchema);
+    if (body.guildId !== ctx.guildId) {
+      return fail("Unauthorized guild context.", 403);
+    }
+
     const { templateId } = await params;
 
     const submission = await submitApplication({

@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { ShiftStatus, SubmissionStatus, TicketStatus } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 export default async function DashboardPage() {
-  const session = await getDevSession();
+  const session = await getAppSession();
 
   const [applications, pendingReview, activeMembers, onShift, openTickets] = await Promise.all([
     prisma.applicationSubmission.count({ where: { guildId: session.guildId } }),

@@ -5,7 +5,8 @@ const navItems = [
   { href: "/applications", label: "Applications" },
   { href: "/roster", label: "Roster" },
   { href: "/shifts", label: "Shifts" },
-  { href: "/tickets", label: "Tickets" }
+  { href: "/tickets", label: "Tickets" },
+  { href: "/discord-sync", label: "Discord Sync" }
 ];
 
 export default function RootLayout({

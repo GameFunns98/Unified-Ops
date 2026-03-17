@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { updateRosterMember } from "@/src/lib/services/roster/update-roster-member";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 type Props = {
   params: Promise<{ memberId: string }>;
 };
 
 export default async function MemberProfilePage({ params }: Props) {
-  const session = await getDevSession();
+  const session = await getAppSession();
   const { memberId } = await params;
 
   const [member, ranks, divisions] = await Promise.all([
@@ -29,7 +29,7 @@ export default async function MemberProfilePage({ params }: Props) {
 
   async function updateAction(formData: FormData) {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
 
     await updateRosterMember({
       guildId: session.guildId,

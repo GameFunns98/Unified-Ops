@@ -2,7 +2,6 @@ import { z } from "zod";
 import { parseJson } from "@/src/lib/api/validation";
 import { fail, ok } from "@/src/lib/api/response";
 import { authErrorResponse, getRequestContext } from "@/src/lib/api/auth";
-import { hasMinimumRole } from "@/src/lib/api/permissions";
 import { updateRosterMember } from "@/src/lib/services/roster/update-roster-member";
 
 const patchSchema = z.object({
@@ -20,13 +19,17 @@ type Params = {
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
 
-    if (!hasMinimumRole(ctx.role, "SUPERVISOR")) {
+    if (!ctx.can("SUPERVISOR")) {
       return fail("Insufficient permissions.", 403);
     }
 
     const body = await parseJson(request, patchSchema);
+    if (body.guildId !== ctx.guildId) {
+      return fail("Unauthorized guild context.", 403);
+    }
+
     const { memberId } = await params;
 
     const result = await updateRosterMember({

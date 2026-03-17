@@ -9,8 +9,8 @@ type Params = {
 
 export async function GET(request: Request, { params }: Params) {
   try {
-    getRequestContext(request);
     const { guildId } = await params;
+    await getRequestContext(request, guildId);
 
     const [applications, pendingReview, activeMembers, onShift, openTickets] = await Promise.all([
       prisma.applicationSubmission.count({ where: { guildId } }),

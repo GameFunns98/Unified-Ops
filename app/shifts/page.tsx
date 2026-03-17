@@ -4,10 +4,10 @@ import { ShiftStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { startShift } from "@/src/lib/services/shifts/start-shift";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 export default async function ShiftsPage() {
-  const session = await getDevSession();
+  const session = await getAppSession();
 
   const [myMember, shifts] = await Promise.all([
     prisma.guildMember.findFirst({
@@ -24,7 +24,7 @@ export default async function ShiftsPage() {
 
   async function startAction() {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
     const member = await prisma.guildMember.findFirst({
       where: { guildId: session.guildId, userId: session.userId },
       include: { rosterEntry: true }
