@@ -1,8 +1,46 @@
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+import { ShiftStatus, SubmissionStatus, TicketStatus } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
+import { getDevSession } from "@/src/lib/dev-session";
+
+export default async function DashboardPage() {
+  const session = await getDevSession();
+
+  const [applications, pendingReview, activeMembers, onShift, openTickets] = await Promise.all([
+    prisma.applicationSubmission.count({ where: { guildId: session.guildId } }),
+    prisma.applicationSubmission.count({
+      where: {
+        guildId: session.guildId,
+        status: { in: [SubmissionStatus.SUBMITTED, SubmissionStatus.IN_REVIEW, SubmissionStatus.INTERVIEW] }
+      }
+    }),
+    prisma.guildMember.count({ where: { guildId: session.guildId, isActive: true } }),
+    prisma.shift.count({ where: { guildId: session.guildId, status: ShiftStatus.ACTIVE } }),
+    prisma.ticket.count({
+      where: { guildId: session.guildId, status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING] } }
+    })
+  ]);
+
+  const metrics = [
+    ["Total applications", applications],
+    ["Pending review", pendingReview],
+    ["Active members", activeMembers],
+    ["On shift", onShift],
+    ["Open tickets", openTickets]
+  ];
+
   return (
-    <main style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Unified Ops</h1>
-      <p>App starter byl vytvoren bootstrap skriptem.</p>
+    <main>
+      <p style={{ marginTop: 0 }}>Guild: {session.guildName}</p>
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+        {metrics.map(([label, value]) => (
+          <article key={label} style={{ background: "white", padding: 16, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: 13, color: "#475569" }}>{label}</div>
+            <strong style={{ fontSize: 24 }}>{value}</strong>
+          </article>
+        ))}
+      </section>
     </main>
   );
 }
