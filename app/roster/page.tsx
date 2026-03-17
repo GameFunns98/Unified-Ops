@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 export default async function RosterPage() {
-  const session = await getDevSession();
+  const session = await getAppSession();
 
   const members = await prisma.guildMember.findMany({
     where: { guildId: session.guildId },

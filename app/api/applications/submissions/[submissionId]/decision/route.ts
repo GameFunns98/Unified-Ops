@@ -3,7 +3,6 @@ import { z } from "zod";
 import { parseJson } from "@/src/lib/api/validation";
 import { fail, ok } from "@/src/lib/api/response";
 import { authErrorResponse, getRequestContext } from "@/src/lib/api/auth";
-import { hasMinimumRole } from "@/src/lib/api/permissions";
 import { decideApplication } from "@/src/lib/services/applications/decide-application";
 
 const decideApplicationSchema = z.object({
@@ -19,13 +18,17 @@ type Params = {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
 
-    if (!hasMinimumRole(ctx.role, "REVIEWER")) {
+    if (!ctx.can("REVIEWER")) {
       return fail("Insufficient permissions.", 403);
     }
 
     const body = await parseJson(request, decideApplicationSchema);
+    if (body.guildId !== ctx.guildId) {
+      return fail("Unauthorized guild context.", 403);
+    }
+
     const { submissionId } = await params;
 
     const result = await decideApplication({

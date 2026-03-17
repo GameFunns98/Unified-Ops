@@ -1,6 +1,5 @@
 import { fail, ok } from "@/src/lib/api/response";
 import { authErrorResponse, getRequestContext } from "@/src/lib/api/auth";
-import { hasMinimumRole } from "@/src/lib/api/permissions";
 import { syncMemberToDiscord } from "@/src/lib/discord/sync-member";
 
 type Params = {
@@ -9,20 +8,14 @@ type Params = {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const ctx = getRequestContext(request);
+    const ctx = await getRequestContext(request);
 
-    if (!hasMinimumRole(ctx.role, "SUPERVISOR")) {
+    if (!ctx.can("SUPERVISOR")) {
       return fail("Insufficient permissions.", 403);
     }
 
     const { memberId } = await params;
-    const guildId = request.headers.get("x-dev-guild-id");
-
-    if (!guildId) {
-      return fail("Missing guild context.", 400);
-    }
-
-    const job = await syncMemberToDiscord(guildId, memberId);
+    const job = await syncMemberToDiscord(ctx.guildId, memberId, ctx.userId);
     return ok(job);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHENTICATED") {

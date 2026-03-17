@@ -68,7 +68,7 @@ export async function updateRosterMember(input: UpdateRosterMemberInput) {
     }
   });
 
-  await syncMemberToDiscord(input.guildId, member.id);
+  await syncMemberToDiscord(input.guildId, member.id, input.actorUserId);
 
   return updated;
 }

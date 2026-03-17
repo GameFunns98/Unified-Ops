@@ -149,7 +149,7 @@ export async function decideApplication(input: DecideApplicationInput) {
   });
 
   if (result.accepted && "guildMemberId" in result && result.guildMemberId) {
-    await syncMemberToDiscord(input.guildId, result.guildMemberId);
+    await syncMemberToDiscord(input.guildId, result.guildMemberId, input.reviewerId);
   }
 
   return result;

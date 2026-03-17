@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 export default async function TicketsPage() {
-  const session = await getDevSession();
+  const session = await getAppSession();
 
   const [panels, tickets] = await Promise.all([
     prisma.ticketPanel.findMany({ where: { guildId: session.guildId }, orderBy: { createdAt: "desc" } }),
@@ -14,7 +14,7 @@ export default async function TicketsPage() {
 
   async function createPanelAction(formData: FormData) {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
     await prisma.ticketPanel.create({
       data: {
         guildId: session.guildId,
@@ -28,7 +28,7 @@ export default async function TicketsPage() {
 
   async function createTicketAction(formData: FormData) {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
     const panelId = String(formData.get("panelId") ?? "");
 
     await prisma.ticket.create({

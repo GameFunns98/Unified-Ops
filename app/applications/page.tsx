@@ -5,10 +5,10 @@ import { revalidatePath } from "next/cache";
 import { decideApplication } from "@/src/lib/services/applications/decide-application";
 import { submitApplication } from "@/src/lib/services/applications/submit-application";
 import { prisma } from "@/src/lib/prisma";
-import { getDevSession } from "@/src/lib/dev-session";
+import { getAppSession } from "@/src/lib/auth/session";
 
 export default async function ApplicationsPage() {
-  const session = await getDevSession();
+  const session = await getAppSession();
 
   const [templates, submissions] = await Promise.all([
     prisma.applicationTemplate.findMany({
@@ -28,7 +28,7 @@ export default async function ApplicationsPage() {
 
   async function submitAction(formData: FormData) {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
     const templateId = String(formData.get("templateId") ?? "");
     const fieldId = String(formData.get("fieldId") ?? "");
     const answer = String(formData.get("answer") ?? "");
@@ -46,7 +46,7 @@ export default async function ApplicationsPage() {
 
   async function decisionAction(formData: FormData) {
     "use server";
-    const session = await getDevSession();
+    const session = await getAppSession();
     const submissionId = String(formData.get("submissionId") ?? "");
     const decision = String(formData.get("decision") ?? "REJECT") as ReviewDecision;
 
